@@ -3,8 +3,7 @@ The source code has developer state. For production environment test it carefull
 
 The Posix Winsync Plugin syncs Posix attributes between 389 DS and MS AD for users and groups, if the attributes are available in one of the tow worlds. For syncing from AD to DS it will add the objectclass posixAccount and ShadowAccount or posixGroup for the ldap entry.
 The MSFU35 and the RFC2307 schema of AD is supported, but must configured in the plugin
-user lock/unlock will sync and lock the user on DS with nsmanageddisabledrole.
-the code is borrowed from the freeIPA project.
+user lock/unlock will sync and lock the user on DS with nsmanageddisabledrole.  The code is borrowed from the freeIPA project.
 It is also possible to generate memberUid Attributes in Posix Groups corresponding the group members, if the members are Posix Users.
 After syncing from AD with a change in group membership, it will schedule a 'Member of Plugin' task, so that users get the memberOf attributes.
 
