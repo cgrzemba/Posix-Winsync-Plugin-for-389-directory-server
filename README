@@ -1,0 +1,61 @@
+The Posix Winsync Plugin syncs Posix attributes between 389 DS and MS AD for users and groups, if they are availible in one of the to worlds. For syncing from AD to DS it will add the objectclass posixAccount and ShadowAccount or posixGroup for the ldap entry.
+The MSFU35 and the RFC2307 schema of AD is supported, but must configered in the plugin
+It is also possible to generate memberUid Attributes in Posix Groups corresponding the group members, if the members are Posix Users.
+After syncing from AD with a change in group membership, it will schedule a 'Memebr of Plugin' task, so that users get the memberOf attributs.
+
+Build
+
+You need the devel-packages with the slapi header files, customize the include paths.
+
+compile:
+    gcc -g -shared -m64 -fPIC -c \
+               -I ../fedora-ds/ds/ldap/servers/slapd  \
+               -I ../fedora-ds/ds/ldap/servers/plugins/replication \
+               -I /usr/include/mps posix-winsync.c
+link:
+    ld -G posix-winsync.o -o libposix-winsync.so 
+
+I have never build this plugin for linux, only for Solaris, but should work on Linux also.
+
+Install
+
+configure the plugin with:
+
+dn: cn=Posix Winsync API,cn=plugins,cn=config
+objectclass: top
+objectclass: nsSlapdPlugin
+objectclass: extensibleObject
+cn: Posix Winsync API
+nsslapd-pluginpath: libposix-winsync
+nsslapd-plugininitfunc: posix_winsync_plugin_init
+nsslapd-plugintype: preoperation
+nsslapd-pluginenabled: on
+nsslapd-plugin-depends-on-type: database
+nsslapd-pluginDescription: Sync Posix Attributes for users and groups between AD and DS if available and user lock/unlock
+nsslapd-pluginVendor: contac Datentechnik GmbH
+nsslapd-pluginId: posix-winsync-plugin
+nsslapd-pluginVersion: POSIX/1.0
+posixWinsyncMsSFUSchema: false
+posixWinsyncMapMemberUID: true
+posixWinsyncCreateMemberOfTask: true
+posixWinsyncLowerCaseUID: true
+
+there are actually 4 Config attributes:
+
+posixWinsyncMsSFUSchema -- set this true for the old MSFU schema on W2k3 AD's
+	default: false
+
+posixWinsyncMapMemberUID -- set this false, if you don't want generate memebrUid attributs in posix Groups
+	default: true
+
+posixWinsyncCreateMemberOfTask -- create a task for the member of plugin to
+	generate the memberOf attributes in a user, if a group membership in
+	any user is changed while syncing. The postop-/preop plugins will not
+	called through winsync, thats why create a task.
+	default: false
+
+posixWinsyncLowerCaseUID: some customers use uppercase letters in samAccount
+ 	which is mapped to uid. uid should be case insensitve and works on
+	Unix/Linux for users, but makes problems with supplementary groups (a least on Solaris)
+	so you can set this to true, so that memebrUid attributes will convert to lowercase.
+	default: false
