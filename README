@@ -49,7 +49,7 @@ there are actually 4 Config attributes:
 posixWinsyncMsSFUSchema -- set this true for the old MSFU schema on W2k3 AD's
 	default: false
 
-posixWinsyncMapMemberUID -- set this false, if you don't want generate memebrUid attributs in posix Groups
+posixWinsyncMapMemberUID -- set this false, if you don't want generate memberUid attributs in posix Groups
 	default: true
 
 posixWinsyncCreateMemberOfTask -- create a task for the member of plugin to
