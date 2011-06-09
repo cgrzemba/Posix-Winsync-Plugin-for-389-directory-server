@@ -1,0 +1,18 @@
+dn: cn=Posix Winsync API,cn=plugins,cn=config
+objectclass: top
+objectclass: nsSlapdPlugin
+objectclass: extensibleObject
+cn: Posix Winsync API
+nsslapd-pluginpath: libposix-winsync
+nsslapd-plugininitfunc: posix_winsync_plugin_init
+nsslapd-plugintype: preoperation
+nsslapd-pluginenabled: on
+nsslapd-plugin-depends-on-type: database
+nsslapd-pluginDescription: Sync Posix Attributes for users and groups between AD and DS if available and user lock/unlock
+nsslapd-pluginVendor: contac Datentechnik GmbH
+nsslapd-pluginId: posix-winsync-plugin
+nsslapd-pluginVersion: POSIX/1.0
+posixWinsyncMsSFUSchema: false
+posixWinsyncMapMemberUID: true
+posixWinsyncCreateMemberOfTask: false
+posixWinsyncLowerCaseUID: false
