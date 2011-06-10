@@ -1,5 +1,5 @@
 /**
-	$Id: posix-wsp-ident.h 27 2011-05-13 14:34:55Z grzemba $
+	$Id: posix-wsp-ident.h 39 2011-06-10 08:22:11Z grzemba $
 **/
 
 #ifndef POSIX_WINSYNC_H
@@ -28,7 +28,8 @@ typedef struct posix_winsync_config_struct {
     PRBool mapMemberUID; /* map uniqueMember to memberUid  */
     PRBool lowercase; /* store the uid in group memberuid in lower case */
     PRBool createMemberOfTask; /* should memberOf Plugin Task run after AD sync */
-    PRBool MOFTaskCreated; 
+    PRBool MOFTaskCreated;
+    Slapi_DN *rep_suffix; /* namingContext in DS of the replicated suffix */  
 } POSIX_WinSync_Config;
 
 int posix_winsync_config(Slapi_Entry *config_e);
@@ -37,6 +38,7 @@ PRBool posix_winsync_config_get_mapMemberUid();
 PRBool posix_winsync_config_get_msSFUSchema();
 PRBool posix_winsync_config_get_lowercase();
 PRBool posix_winsync_config_get_createMOFTask();
+Slapi_DN *posix_winsync_config_get_suffix();
 void posix_winsync_config_reset_MOFTaskCreated();
 void posix_winsync_config_set_MOFTaskCreated();
 PRBool posix_winsync_config_get_MOFTaskCreated();

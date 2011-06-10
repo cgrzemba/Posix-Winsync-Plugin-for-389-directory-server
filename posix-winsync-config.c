@@ -11,9 +11,29 @@
  * this Program; if not, write to the Free Software Foundation, Inc., 59 Temple
  * Place, Suite 330, Boston, MA 02111-1307 USA.
  *
+ * In addition, as a special exception, Red Hat, Inc. gives You the additional
+ * right to link the code of this Program with code not covered under the GNU
+ * General Public License ("Non-GPL Code") and to distribute linked combinations
+ * including the two, subject to the limitations in this paragraph. Non-GPL Code
+ * permitted under this exception must only link to the code of this Program
+ * through those well defined interfaces identified in the file named EXCEPTION
+ * found in the source code files (the "Approved Interfaces"). The files of
+ * Non-GPL Code may instantiate templates or use macros or inline functions from
+ * the Approved Interfaces without causing the resulting work to be covered by
+ * the GNU General Public License. Only Red Hat, Inc. may make changes or
+ * additions to the list of Approved Interfaces. You must obey the GNU General
+ * Public License in all respects for all of the Program code and other code
+ * used in conjunction with the Program except the Non-GPL Code covered by this
+ * exception. If you modify this file, you may extend this exception to your
+ * version of the file, but you are not obligated to do so. If you do not wish
+ * to provide this exception without modification, you must delete this
+ * exception statement from your version and license this file solely under the
+ * GPL without exception.
+ *
  * END COPYRIGHT BLOCK **/
 /* 
-	$Id: posix-winsync-config.c 35 2011-05-27 11:53:40Z grzemba $
+	$Id: posix-winsync-config.c 42 2011-06-10 08:39:50Z grzemba $
+	$HeadURL: file:///storejet/svn/posix-winsync-plugin/trunk/posix-winsync-config.c $
 */
 
 #ifdef WINSYNC_TEST_POSIX
@@ -33,6 +53,83 @@
 /* for now, there is only one configuration and it is global to the plugin  */
 static POSIX_WinSync_Config theConfig;
 static int inited = 0;
+
+/* This is called when a new agreement is created or loaded
+   at startup.
+*/
+
+static int
+dn_isparent( const char *parentdn, const char *childdn )
+{
+	char *realparentdn, *copyparentdn;
+	int	rc=0, i,j;
+
+	/* child is root - has no parent */
+	if ( childdn == NULL || *childdn == '\0' ) {
+		return( 0 );
+	}
+
+	/* construct the actual parent dn and normalize it */
+	realparentdn = slapi_ch_strdup( (char *)childdn );
+	slapi_dn_normalize_case( realparentdn );
+
+	/* normalize the purported parent dn */
+	copyparentdn = slapi_ch_strdup( (char *)parentdn );
+	slapi_dn_normalize_case( copyparentdn );
+
+    slapi_log_error(SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,
+                    "--> dn_isparent [%s] [%s]\n",
+                    realparentdn, copyparentdn);
+
+	/* compare them reverse*/
+	i=strlen(copyparentdn);
+	j=strlen(realparentdn);
+	if (j<i)
+	    return rc=1; /* subtree shorter than suffix: error */
+	for(;i<0;i--,j--){
+	    if (copyparentdn[i] != realparentdn[j])
+	        return rc=1;
+	}
+	slapi_ch_free( (void**)&copyparentdn );
+	slapi_ch_free( (void**)&realparentdn );
+
+	return( rc );
+}
+
+
+
+void *
+posix_winsync_agmt_init(const Slapi_DN *ds_subtree, const Slapi_DN *ad_subtree)
+{
+    void *cbdata = NULL;
+    void *node=NULL;
+    Slapi_DN *sdn=NULL;
+
+    slapi_log_error(SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,
+                    "--> posix_winsync_agmt_init [%s] [%s] -- begin\n",
+                    slapi_sdn_get_dn(ds_subtree),
+                    slapi_sdn_get_dn(ad_subtree));
+
+    sdn = slapi_get_first_suffix( &node, 0 );
+	while (sdn)
+	{
+	    int rc=0;
+	    if(rc=dn_isparent(slapi_sdn_get_dn(sdn),slapi_sdn_get_dn(ds_subtree))){
+	        theConfig.rep_suffix = sdn;
+	        slapi_log_error ( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,
+				"Found suffix's '%s'\n",slapi_sdn_get_dn(sdn) );
+			break;
+	    }
+		sdn = slapi_get_next_suffix( &node, 0 );
+        slapi_log_error ( SLAPI_LOG_FATAL, POSIX_WINSYNC_PLUGIN_NAME,
+            "suffix not found for '%s'\n",slapi_dn_parent(slapi_sdn_get_dn(ds_subtree)));
+	}
+
+    slapi_log_error(SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,
+                    "<-- posix_winsync_agmt_init -- end\n");
+
+    return cbdata;
+}
 
 static int posix_winsync_apply_config (Slapi_PBlock *pb, Slapi_Entry* entryBefore,
                           Slapi_Entry* e, int *returncode, char *returntext,
@@ -75,6 +172,10 @@ PRBool posix_winsync_config_get_msSFUSchema()
     return theConfig.mssfuSchema;
 }
 
+Slapi_DN *posix_winsync_config_get_suffix()
+{
+    return theConfig.rep_suffix;
+}
 /*
  * Read configuration and create a configuration data structure.
  * This is called after the server has configured itself so we can check
@@ -109,6 +210,7 @@ int posix_winsync_config(Slapi_Entry *config_e)
     theConfig.lowercase = PR_FALSE;
     theConfig.createMemberOfTask = PR_FALSE;
     theConfig.MOFTaskCreated = PR_FALSE;
+    
     posix_winsync_apply_config(NULL, NULL, config_e,&returncode, returntext, NULL);
     /* config DSE must be initialized before we get here */
     if (returncode == LDAP_SUCCESS) {

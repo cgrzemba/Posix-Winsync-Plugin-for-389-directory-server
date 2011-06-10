@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
-	$Id: posix-winsync.c 32 2011-05-27 11:47:13Z grzemba $
+	$Id: posix-winsync.c 40 2011-06-10 08:28:56Z grzemba $
 **/
 
 /* 
@@ -70,6 +70,7 @@ for details see: Red_Hat_Directory_Server-8.2-Plug-in_Guide-en-US.pdf
 #define MEMBEROFTASK "memberof task"
 Slapi_Value **valueset_get_valuearray(const Slapi_ValueSet *vs); /* stolen from proto-slap.h */
 void * posix_winsync_get_plugin_identity();
+void *posix_winsync_agmt_init(const Slapi_DN *ds_subtree, const Slapi_DN *ad_subtree);
 
 /**
  * Plugin identifiers
@@ -334,12 +335,20 @@ sync_acct_disable(
 
     if (direction == ACCT_DISABLE_TO_DS) {
         char *attrtype = NULL;
-        char *attrval = NULL;
+        char *attrval;
+        char val[255];
+        
         attrtype = (isvirt)?"nsRoleDN":"nsAccountLock";
         if (ad_is_enabled) {
             attrval = NULL; /* will delete the value */
         } else {
-            attrval = (isvirt)?"cn=nsmanageddisabledrole,dc=mdvh,dc=dom":"true";
+            if (isvirt) {
+                strcpy(val,"cn=nsManagedDisabledRole,");
+                strlcat(val,slapi_sdn_get_dn(posix_winsync_config_get_suffix()),255);
+                attrval = val;
+            }else{
+                attrval = "true";
+            }
         }
 
         if (update_entry) {
@@ -466,25 +475,6 @@ static int addNisDomainName(Slapi_Mod *smod,const Slapi_Entry *ds_entry)
 	
 	slapi_ch_free_string(&nisdomainname);
 	return rc;
-}
-
-
-/* This is called when a new agreement is created or loaded
-   at startup.
-*/
-static void *
-posix_winsync_agmt_init(const Slapi_DN *ds_subtree, const Slapi_DN *ad_subtree)
-{
-    void *cbdata = NULL;
-    slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
-                    "--> posix_winsync_agmt_init [%s] [%s] -- begin\n",
-                    slapi_sdn_get_dn(ds_subtree),
-                    slapi_sdn_get_dn(ad_subtree));
-
-    slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
-                    "<-- posix_winsync_agmt_init -- end\n");
-
-    return cbdata;
 }
 
 static void

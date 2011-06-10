@@ -9,11 +9,11 @@ objectClass: top
 objectClass: domain
 objectClass: nisdomainobject
 dc: example
-It can be stored in any container above the user and group container.
+It can be stored in any container above the user and group container and below the replicated DS subtree.
 The MSFU35 and the RFC2307 schema of AD is supported, but must configured in the plugin
 user lock/unlock will sync and lock the user on DS with nsmanageddisabledrole.  The code is borrowed from the freeIPA project.
 It is also possible to generate memberUid Attributes in Posix Groups corresponding the group members, if the members are Posix Users.
-After syncing from AD with a change in group membership, it will schedule a 'Member of Plugin' task, so that users get the memberOf attributes.
+After syncing from AD with a change in group membership, it will schedule a 'Member of Plugin' task, so that users get the memberOf attributes. For that the posix user get the objectclass inetUser
 
 Build
 
@@ -31,6 +31,7 @@ I have never build this plugin for linux, only for Solaris, but should work on L
 
 Install
 
+copy the libposix-winsync.so to <ds-base>/lib/dirserv/plugins/
 configure the plugin with:
 
 dn: cn=Posix Winsync API,cn=plugins,cn=config
