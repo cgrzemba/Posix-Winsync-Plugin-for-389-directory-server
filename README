@@ -1,6 +1,9 @@
 WARNIG
 The source code has developer state. For production environment test it carefully.
 
+This is a winsync plugin for the 389 directory server. The directory server is a fedora project:
+http://directory.fedoraproject.org
+
 The Posix Winsync Plugin syncs Posix attributes between 389 DS and MS AD for users and groups, if the attributes are available in one of the tow worlds. For syncing from AD to DS it will add the objectclass posixAccount and ShadowAccount or posixGroup for the ldap entry.
 For sync a user or group from DS to AD AD needs a nisdomain name, the nisdomin name I have stored in the upper container of the users and groups, e.g.:
 dn: dc=example,dc=dom
@@ -14,6 +17,9 @@ The MSFU35 and the RFC2307 schema of AD is supported, but must configured in the
 user lock/unlock will sync and lock the user on DS with nsmanageddisabledrole.  The code is borrowed from the freeIPA project.
 It is also possible to generate memberUid Attributes in Posix Groups corresponding the group members, if the members are Posix Users.
 After syncing from AD with a change in group membership, it will schedule a 'Member of Plugin' task, so that users get the memberOf attributes. For that the posix user get the objectclass inetUser
+
+for programming details see: Red_Hat_Directory_Server-8.2-Plug-in_Guide-en-US.pdf on
+http://docs.redhat.com
 
 Build
 
