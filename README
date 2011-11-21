@@ -76,5 +76,5 @@ posixWinsyncCreateMemberOfTask -- create a task for the member of plugin to
 posixWinsyncLowerCaseUID: some customers use uppercase letters in samAccount
  	which is mapped to uid. uid should be case insensitve and works on
 	Unix/Linux for users, but makes problems with supplementary groups (a least on Solaris)
-	so you can set this to true, so that memebrUid attributes will convert to lowercase.
+	so you can set this to true, so that memberUid attributes will convert to lowercase.
 	default: false
