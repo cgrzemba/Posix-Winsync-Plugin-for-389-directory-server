@@ -23,10 +23,12 @@ http://docs.redhat.com
 
 Build
 
+Now the lib will build and install by autotools, see INSTALL for details.
+
 You need the devel-packages with the slapi header files, customize the include paths.
 
 compile:
-    gcc -g -shared -m64 -fPIC -c \
+    gcc -g -fPIC -c \
                -I ../fedora-ds/ds/ldap/servers/slapd  \
                -I ../fedora-ds/ds/ldap/servers/plugins/replication \
                -I /usr/include/mps posix-winsync.c
