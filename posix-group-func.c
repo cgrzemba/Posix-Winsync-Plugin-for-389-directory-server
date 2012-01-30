@@ -18,74 +18,12 @@
 	$Id: posix-group-func.c 28 2011-05-13 14:35:29Z grzemba $
 */
 #include "slapi-plugin.h"
-#include "slapi-private.h"
+/* #include "slapi-private.h" */ 
 
 #include <string.h>
 #include "posix-wsp-ident.h"
 
 Slapi_Value **valueset_get_valuearray(const Slapi_ValueSet *vs); /* stolen from proto-slap.h */
-
-Slapi_PBlock *searchDN( const char *baseDN, const char *filter, char *attrs[] ) {
-    Slapi_PBlock *spb = NULL;
-    int sres;
-
-    /* Perform the search - the new pblock needs to be freed */
-    spb = slapi_search_internal((char *)baseDN, LDAP_SCOPE_BASE,
-                                                            (char *)filter, NULL, attrs, 0);
-    if ( !spb ) {
-            slapi_log_error( SLAPI_LOG_FATAL, POSIX_WINSYNC_PLUGIN_NAME,"searchDN: error searching for uid: %s", baseDN);
-            return NULL;
-    }
-    if ( slapi_pblock_get( spb, SLAPI_PLUGIN_INTOP_RESULT, &sres ) ) {
-            slapi_log_error( SLAPI_LOG_FATAL, POSIX_WINSYNC_PLUGIN_NAME,"searchDN: error getting search results for uid: %s", baseDN);
-            return NULL;
-    } else if (sres) {
-            slapi_log_error( SLAPI_LOG_FATAL, POSIX_WINSYNC_PLUGIN_NAME,"searchDN: no search results for uid: %s", baseDN);
-            return NULL;
-    }
-    return spb;
-}
-
-/*
- * dnHasObjectClass - read an entry if it has a particular object class
- * Return:
- *   A pblock containing the entry, or NULL
- */
-Slapi_PBlock *
-dnHasObjectClass( const char *baseDN, const char *objectClass, Slapi_Entry **entry ) {
-    char *filter = NULL;
-    Slapi_PBlock *spb = NULL;
-    char *attrs[2];
-    Slapi_Entry **entries;
-
-    
-    /* Perform the search - the new pblock needs to be freed */
-    attrs[0] = "objectclass";
-    attrs[1] = NULL;
-    filter = PR_smprintf("objectclass=%s", objectClass );
-    if ( !(spb = searchDN( baseDN, filter, attrs) ) ) {
-            PR_smprintf_free(filter);
-            return NULL;
-    }
-    PR_smprintf_free(filter);
-    if ( slapi_pblock_get(spb, SLAPI_PLUGIN_INTOP_SEARCH_ENTRIES,
-                                              &entries) ) {
-            slapi_log_error( SLAPI_LOG_FATAL, POSIX_WINSYNC_PLUGIN_NAME,"dnHasObjectClass: no search results for uid: %s", baseDN);
-            return NULL;
-    }
-    /*
-     * Can only be one entry returned on a base search; just check
-     * the first one
-     */
-    if ( !*entries ) {
-            /* Clean up */
-            slapi_free_search_results_internal(spb);
-            slapi_pblock_destroy(spb);
-            return NULL;
-    }
-    *entry = *entries;
-    return spb;
-}
 
 /* search the user with DN udn and returns uid*/
 char * searchUid(const char *udn) {

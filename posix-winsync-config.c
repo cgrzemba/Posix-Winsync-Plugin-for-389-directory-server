@@ -115,16 +115,17 @@ posix_winsync_agmt_init(const Slapi_DN *ds_subtree, const Slapi_DN *ad_subtree)
 	{
 	    int rc=0;
 	    if(rc=dn_isparent(slapi_sdn_get_dn(sdn),slapi_sdn_get_dn(ds_subtree))){
-	        theConfig.rep_suffix = sdn;
-	        slapi_log_error ( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,
-				"Found suffix's '%s'\n",slapi_sdn_get_dn(sdn) );
-			break;
+            theConfig.rep_suffix = sdn;
+            slapi_log_error ( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,
+                    "Found suffix's '%s'\n",slapi_sdn_get_dn(sdn) );
+                break;
 	    }
-		sdn = slapi_get_next_suffix( &node, 0 );
-        slapi_log_error ( SLAPI_LOG_FATAL, POSIX_WINSYNC_PLUGIN_NAME,
-            "suffix not found for '%s'\n",slapi_dn_parent(slapi_sdn_get_dn(ds_subtree)));
+	    sdn = slapi_get_next_suffix( &node, 0 );
 	}
-
+	if ( ! sdn ) {
+	    slapi_log_error ( SLAPI_LOG_FATAL, POSIX_WINSYNC_PLUGIN_NAME,
+		    "suffix not found for '%s'\n",slapi_dn_parent(slapi_sdn_get_dn(ds_subtree)));
+	}
     slapi_log_error(SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,
                     "<-- posix_winsync_agmt_init -- end\n");
 
