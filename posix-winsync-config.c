@@ -59,41 +59,37 @@ static int inited = 0;
 */
 
 static int
-dn_isparent( const char *parentdn, const char *childdn )
+dn_isparent( const Slapi_DN *parentdn, const Slapi_DN *childdn )
 {
-	char *realparentdn, *copyparentdn;
-	int	rc=0, i,j;
-
-	/* child is root - has no parent */
-	if ( childdn == NULL || *childdn == '\0' ) {
-		return( 0 );
-	}
+	const char *replbasedn, *suffixdn;
+	int	i,j;
 
 	/* construct the actual parent dn and normalize it */
-	realparentdn = slapi_ch_strdup( (char *)childdn );
-	slapi_dn_normalize_case( realparentdn );
-
-	/* normalize the purported parent dn */
-	copyparentdn = slapi_ch_strdup( (char *)parentdn );
-	slapi_dn_normalize_case( copyparentdn );
-
+	replbasedn = slapi_sdn_get_ndn( childdn );
+	suffixdn = slapi_sdn_get_ndn( parentdn );
     slapi_log_error(SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,
                     "--> dn_isparent [%s] [%s]\n",
-                    realparentdn, copyparentdn);
+                    suffixdn, replbasedn );
 
 	/* compare them reverse*/
-	i=strlen(copyparentdn);
-	j=strlen(realparentdn);
-	if (j<i)
-	    return rc=1; /* subtree shorter than suffix: error */
-	for(;i<0;i--,j--){
-	    if (copyparentdn[i] != realparentdn[j])
-	        return rc=1;
+	i=strlen(suffixdn);
+	j=strlen(replbasedn);
+	if (j<i) {
+        slapi_log_error(SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,
+                    "--> dn_isparent return equal not possible %d %d\n",i,j);
+	    return 1; /* subtree shorter than suffix: not equal */
 	}
-	slapi_ch_free( (void**)&copyparentdn );
-	slapi_ch_free( (void**)&realparentdn );
-
-	return( rc );
+	for(;i>0;i--,j--){
+	    /* skip spaces, but by slapi_sdn_get_ndn these should be only on the end or beginning */
+	    while (suffixdn[i]==' ' && i >= 0) i--;
+	    while (replbasedn[j]==' ' && j >= 0) j--;
+	    if (suffixdn[i] != replbasedn[j]){
+	        slapi_log_error(SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,
+                    "--> dn_isparent return not equal\n");
+	        return 1;
+	    }
+	}
+	return 0;
 }
 
 
@@ -114,7 +110,7 @@ posix_winsync_agmt_init(const Slapi_DN *ds_subtree, const Slapi_DN *ad_subtree)
 	while (sdn)
 	{
 	    int rc=0;
-	    if(rc=dn_isparent(slapi_sdn_get_dn(sdn),slapi_sdn_get_dn(ds_subtree))){
+	    if(dn_isparent(sdn, ds_subtree) == 0){
             theConfig.rep_suffix = sdn;
             slapi_log_error ( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,
                     "Found suffix's '%s'\n",slapi_sdn_get_dn(sdn) );
