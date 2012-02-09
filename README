@@ -35,7 +35,9 @@ compile:
 link:
     ld -G posix-winsync.o -o libposix-winsync.so 
 
-I have never build this plugin for linux, only for Solaris, but should work on Linux also.
+I have never build this plugin for linux, only for Solaris, but should work on Linux also. 
+
+For Solaris10+ there are packages for the whole 389 Directory Server on http://wiki.opencsw.org/project-389directoryserver. For the plugin only on: http://buildfarm.opencsw.org/experimental.html#389directoryserver
 
 Install
 
