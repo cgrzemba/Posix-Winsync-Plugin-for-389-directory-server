@@ -35,6 +35,15 @@ compile:
 link:
     ld -G posix-winsync.o -o libposix-winsync.so 
 
+to simplify the process there are configure.ac and Makefile.am files. So you can build:
+$ autoconf
+$ automake --add-misising
+$ ./configure --prefix=/usr --with-nspr-inc=<path to nspr.h> \
+              --with-ds-inc=<path to slapi-plugin.h> \
+              --with-ds-winsync-inc=<path to winsync-plugin.h>
+$ make
+$ make install
+
 I have never build this plugin for linux, only for Solaris, but should work on Linux also. 
 
 For Solaris10+ there are packages for the whole 389 Directory Server on http://wiki.opencsw.org/project-389directoryserver. For the plugin only on: http://buildfarm.opencsw.org/experimental.html#389directoryserver

@@ -88,6 +88,25 @@ AC_ARG_WITH(ds-inc, AS_HELP_STRING([--with-ds-inc=PATH],[Port389 DS include dire
 ])
 AC_SUBST([ds_inc])
 
+# check for --with-ds-winsync-inc
+AC_MSG_CHECKING(for --with-ds-winsync-inc)
+AC_ARG_WITH(ds-winsync-inc, AS_HELP_STRING([--with-ds-winsync-inc=PATH],[Port389 DS winsync include directory]),
+[
+  if test -e "$withval"/winsync-plugin.h
+  then
+    AC_MSG_RESULT([using $withval])
+    ds_winsync_inc="-I$withval"
+  else
+    echo
+    AC_MSG_ERROR([$withval not found])
+  fi
+],
+[
+  AC_MSG_RESULT(no)
+  ds_winsync_inc=""
+])
+AC_SUBST([ds_winsync_inc])
+
 AC_OUTPUT([
 Makefile
 ])

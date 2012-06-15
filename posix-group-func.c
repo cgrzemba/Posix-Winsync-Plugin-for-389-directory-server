@@ -101,12 +101,13 @@ int dn_in_set(const char* uid, char **uids) {
 int uid_in_set(const char* uid, char **uids) {
     int i;
 
-    if (uids == NULL ||uid == NULL) return false;
-    for(i=0;uids[i];i++){
+    if (uid == NULL) return false;
+    for(i=0;uids != NULL && uids[i] !=NULL ;i++){
         Slapi_RDN *i_rdn=NULL;
         char *i_uid=NULL;
         char *t=NULL;
         
+        slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"uid_in_set: comp %s %s \n",uid,uids[i]);
         i_rdn=slapi_rdn_new_dn(uids[i]);
         if (slapi_rdn_get_first(i_rdn,&t,&i_uid)==1){
             if(strncasecmp(uid,i_uid,256)==0){
@@ -146,8 +147,9 @@ int modGroupMembership(Slapi_Entry *entry, Slapi_Mods *smods, int *do_modify){
                 Slapi_ValueSet *newvs = NULL;
                 Slapi_Mod *smod=slapi_mod_new();
                 Slapi_Mod *nextMod=slapi_mod_new();
-                int um_mod = 0;
-                char **uids=NULL;
+                int del_mod = 0;
+                char **smod_adduids=NULL;
+                char **smod_deluids=NULL;
                 
                 slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"modGroupMembership: posixGroup -> look for uniquemember\n");
                 if (slapi_is_loglevel_set(SLAPI_LOG_PLUGIN)) 
@@ -156,19 +158,24 @@ int modGroupMembership(Slapi_Entry *entry, Slapi_Mods *smods, int *do_modify){
                     if (slapi_attr_types_equivalent(slapi_mod_get_type(smod),"uniqueMember")){
                         struct berval   *bv;
                         
-                        um_mod=slapi_mod_get_operation(smod);
+                        del_mod=slapi_mod_get_operation(smod);
                         for (bv = slapi_mod_get_first_value(smod);bv; bv = slapi_mod_get_next_value(smod)) {
                             Slapi_Value *sv = slapi_value_new();
-                            
-                            slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"modGroupMembership: add to uidmodlist %s\n",bv->bv_val);
+
                             slapi_value_init_berval(sv, bv); /* copies bv_val */
-                            slapi_ch_array_add(&uids,slapi_ch_strdup(slapi_value_get_string(sv)));
+                            if(SLAPI_IS_MOD_DELETE(slapi_mod_get_operation(smod))){
+                                slapi_ch_array_add(&smod_deluids,slapi_ch_strdup(slapi_value_get_string(sv)));
+                                slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"modGroupMembership: add to deluids %s\n",bv->bv_val);
+                            }else{
+                                slapi_ch_array_add(&smod_adduids,slapi_ch_strdup(slapi_value_get_string(sv)));
+                                slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"modGroupMembership: add to adduids %s\n",bv->bv_val);
+                            }
                             slapi_value_free(&sv);
                         }
                     }
                 }
                 slapi_mod_done(nextMod);
-                if (!um_mod){
+                if (!del_mod){
                     slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"modGroupMembership: no uniquemember mod, nothing to do<==\n");
                     return 0;
                 }
@@ -186,7 +193,7 @@ int modGroupMembership(Slapi_Entry *entry, Slapi_Mods *smods, int *do_modify){
                 int doModify=false;
                 int j=0;
                 
-                if (SLAPI_IS_MOD_DELETE(um_mod)){
+                if (SLAPI_IS_MOD_DELETE(del_mod) || smod_deluids!=NULL){
                     Slapi_Attr  * mu_attr = NULL;           /* Entry attributes        */
                     rc = slapi_entry_attr_find(entry, "memberUid", &mu_attr);
                     if (rc != 0 || mu_attr == NULL) {
@@ -194,7 +201,7 @@ int modGroupMembership(Slapi_Entry *entry, Slapi_Mods *smods, int *do_modify){
                         return 0;
                     }
                     /* found attribute uniquemember */
-                    if (uids==NULL){ /* deletion of the last value, deletes the Attribut from entry complete, this operation has no value, so we must look by self */
+                    if (smod_deluids==NULL){ /* deletion of the last value, deletes the Attribut from entry complete, this operation has no value, so we must look by self */
                         Slapi_Attr  * um_attr = NULL;           /* Entry attributes        */
                         Slapi_Value * uid_dn_value = NULL;               /* Attribute values        */
                         int rc = slapi_entry_attr_find(entry, "uniquemember", &um_attr);
@@ -208,7 +215,7 @@ int modGroupMembership(Slapi_Entry *entry, Slapi_Mods *smods, int *do_modify){
                             j != -1;
                             j = slapi_attr_next_value(um_attr, j, &uid_dn_value)
                         ) {
-                            slapi_ch_array_add(&uids,slapi_ch_strdup(slapi_value_get_string(uid_dn_value)));
+                            slapi_ch_array_add(&smod_deluids,slapi_ch_strdup(slapi_value_get_string(uid_dn_value)));
                         }
                     }
                     for (                          /* ...loop for value...    */
@@ -221,21 +228,22 @@ int modGroupMembership(Slapi_Entry *entry, Slapi_Mods *smods, int *do_modify){
                         slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"modGroupMembership: test dellist \n");
                         uid=slapi_value_get_string(uid_value);
                         slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"modGroupMembership: test dellist %s\n",uid);
-                        if (uid_in_set(uid,uids)){
+                        if (uid_in_set(uid,smod_deluids)){
                             slapi_ch_array_add(&deluids,slapi_ch_strdup(uid));    
                             slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"modGroupMembership: add to dellist %s\n",uid);
                             doModify=true;
                         }
                     }
-                }else{
+                }
+                if(smod_adduids!=NULL){ /* not MOD_DELETE */
                     const char *uid_dn=NULL;
         
                     slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"modGroupMembership: posixGroup -> look for uniquemember\n");
                     /* found attribute uniquemember */
-                    for (j = 0;uids[j];j++){
+                    for (j = 0;smod_adduids[j];j++){
                         static char *uid=NULL;
                         
-                        uid_dn=uids[j];
+                        uid_dn=smod_adduids[j];
                         slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"modGroupMembership: perform user %s\n", uid_dn);
         
                         uid=searchUid(uid_dn);
@@ -249,19 +257,17 @@ int modGroupMembership(Slapi_Entry *entry, Slapi_Mods *smods, int *do_modify){
                                 slapi_ch_array_add(&adduids, uid);    
                                 doModify=true;
                             }else {                                                                 /* Found a memberUid list, so modify */
-                                if (SLAPI_IS_MOD_ADD(um_mod)){
-                                    Slapi_ValueSet *vs=NULL;
-                                    Slapi_Value *v=slapi_value_new();
-                                    
-                                    slapi_value_init_string_passin(v,uid);
-                                    slapi_attr_get_valueset(muid_attr,&vs);
-                                    if (slapi_valueset_find(muid_attr,vs,v)!=NULL ){  /* already exist, all ok */
-                                        slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"modGroupMembership: uid found in memberuid list %s nothing to do\n", uid);
-                                    }else{
-                                        slapi_ch_array_add(&moduids, uid);    
-                                        slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"modGroupMembership: add to modlist %s\n",uid);
-                                        doModify=true;
-                                    }
+                                Slapi_ValueSet *vs=NULL;
+                                Slapi_Value *v=slapi_value_new();
+                                
+                                slapi_value_init_string_passin(v,uid);
+                                slapi_attr_get_valueset(muid_attr,&vs);
+                                if (slapi_valueset_find(muid_attr,vs,v)!=NULL ){  /* already exist, all ok */
+                                    slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"modGroupMembership: uid found in memberuid list %s nothing to do\n", uid);
+                                }else{
+                                    slapi_ch_array_add(&moduids, uid);    
+                                    slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"modGroupMembership: add to modlist %s\n",uid);
+                                    doModify=true;
                                 }
         /*                                slapi_value_free(&v); */
                             }

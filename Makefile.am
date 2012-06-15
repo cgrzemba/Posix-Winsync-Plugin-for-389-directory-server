@@ -4,6 +4,7 @@ PICFLAG = @pic_flag@
 SHARED = @shared_flag@
 DEBUG_DEFINES = 
 DS_INCLUDES=@ds_inc@
+DS_WS_INCLUDES=@ds_winsync_inc@
 NSPR_INCLUDES=@nspr_inc@
 
 pkglibdir=$(libdir)/dirsrv/plugins
@@ -11,11 +12,11 @@ pkgdatadir=$(datadir)/dirsrv/data/plugins
 
 LIBNAME = libposix-winsync.so
 CONFFILE = posix-winsync-conf.ldif
-CFLAGS = $(PICFLAG) -c -D WINSYNC_TEST_POSIX $(DEBUG_DEFINES) \
-    $(DS_INCLUDES) $(NSPR_INCLUDES)
+CFLAGS = $(PICFLAG) -O3 -m64 -c -D WINSYNC_TEST_POSIX $(DEBUG_DEFINES) \
+    $(DS_INCLUDES) $(DS_WS_INCLUDES) $(NSPR_INCLUDES)
 
 all: posix-winsync.o posix-group-func.o posix-winsync-config.o
-	$(LD) $(SHARED) posix-winsync.o posix-group-func.o posix-winsync-config.o -o $(LIBNAME)
+	$(LD) -64 $(SHARED) posix-winsync.o posix-group-func.o posix-winsync-config.o -o $(LIBNAME)
 
 posix-winsync.o: posix-winsync.c posix-group-func.h posix-wsp-ident.h
 	$(CC) $(CFLAGS) posix-winsync.c
@@ -27,13 +28,13 @@ posix-winsync-config.o: posix-winsync-config.c posix-wsp-ident.h
 	$(CC) $(CFLAGS) posix-winsync-config.c
 
 install:
-	ginstall -d 755 $(DESTDIR)$(pkglibdir)
+	ginstall -d $(DESTDIR)$(pkglibdir)
 	ginstall -m 755 $(LIBNAME) $(DESTDIR)$(pkglibdir)
-	ginstall -d 755 $(DESTDIR)$(pkgdatadir)
+	ginstall -d $(DESTDIR)$(pkgdatadir)
 	ginstall -m 644 $(CONFFILE) $(DESTDIR)$(pkgdatadir)
 
 clean:
-	rm *.o lib*so*
+	rm -f *.o lib*so*
 
 distclean: clean
 	rm -f config.* *~ Makefile Makefile.in autoscan.log
