@@ -21,9 +21,27 @@
 /* #include "slapi-private.h" */ 
 
 #include <string.h>
+#include <nspr.h>
 #include "posix-wsp-ident.h"
 
 Slapi_Value **valueset_get_valuearray(const Slapi_ValueSet *vs); /* stolen from proto-slap.h */
+static PRMonitor *memberuid_operation_lock = 0;
+
+void memberUidLock()
+{
+	PR_EnterMonitor(memberuid_operation_lock);
+}
+
+void memberUidUnlock()
+{
+	PR_ExitMonitor(memberuid_operation_lock);
+}
+
+int memberUidLockInit()
+{
+    return (memberuid_operation_lock = PR_NewMonitor()) != NULL ;
+}
+
 
 /* search the user with DN udn and returns uid*/
 char * searchUid(const char *udn) {
@@ -280,7 +298,6 @@ int modGroupMembership(Slapi_Entry *entry, Slapi_Mods *smods, int *do_modify){
                         for (i=0; adduids[i]; i++) {
                             slapi_mods_add_string(smods,LDAP_MOD_ADD,"memberUid",adduids[i]);
                         }
-                        slapi_ch_array_free(adduids);adduids=NULL;       
                     }else{
                         int i;
                         for (i=0; moduids && moduids[i]; i++) {
@@ -290,15 +307,24 @@ int modGroupMembership(Slapi_Entry *entry, Slapi_Mods *smods, int *do_modify){
                         for (i=0; deluids && deluids[i]; i++) {
                             slapi_mods_add_string(smods,LDAP_MOD_DELETE,"memberUid",deluids[i]);
                         }
-                        slapi_ch_array_free(deluids);deluids=NULL;
                     }
                     if (slapi_is_loglevel_set(SLAPI_LOG_PLUGIN)) 
                         slapi_mods_dump(smods,"memberUid - mods dump");
                     *do_modify = 1;
                     posix_winsync_config_set_MOFTaskCreated();
-              
+
+                    slapi_ch_array_free(smod_adduids);smod_adduids=NULL;       
+                    slapi_ch_array_free(adduids);adduids=NULL;       
+                    slapi_ch_array_free(smod_deluids);smod_deluids=NULL;
+                    slapi_ch_array_free(deluids);deluids=NULL;
+                    slapi_ch_array_free(moduids);moduids=NULL;                          
                     break;     
                 }
+                slapi_ch_array_free(smod_adduids);smod_adduids=NULL;       
+                slapi_ch_array_free(adduids);adduids=NULL;       
+                slapi_ch_array_free(smod_deluids);smod_deluids=NULL;
+                slapi_ch_array_free(deluids);deluids=NULL;
+                slapi_ch_array_free(moduids);moduids=NULL;            
             }
         }
     }

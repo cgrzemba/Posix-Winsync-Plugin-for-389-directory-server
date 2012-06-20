@@ -43,5 +43,9 @@ void posix_winsync_config_reset_MOFTaskCreated();
 void posix_winsync_config_set_MOFTaskCreated();
 PRBool posix_winsync_config_get_MOFTaskCreated();
 
+int posix_group_task_add(Slapi_PBlock *pb, Slapi_Entry *e,
+                    Slapi_Entry *eAfter, int *returncode, char *returntext,
+                    void *arg);
+
 
 #endif

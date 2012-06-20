@@ -15,14 +15,17 @@ CONFFILE = posix-winsync-conf.ldif
 CFLAGS = $(PICFLAG) -O3 -m64 -c -D WINSYNC_TEST_POSIX $(DEBUG_DEFINES) \
     $(DS_INCLUDES) $(DS_WS_INCLUDES) $(NSPR_INCLUDES)
 
-all: posix-winsync.o posix-group-func.o posix-winsync-config.o
-	$(LD) -64 $(SHARED) posix-winsync.o posix-group-func.o posix-winsync-config.o -o $(LIBNAME)
+all: posix-winsync.o posix-group-func.o posix-winsync-config.o posix-group-task.o
+	$(LD) -64 $(SHARED) posix-winsync.o posix-group-func.o posix-winsync-config.o posix-group-task.o -o $(LIBNAME)
 
 posix-winsync.o: posix-winsync.c posix-group-func.h posix-wsp-ident.h
 	$(CC) $(CFLAGS) posix-winsync.c
 
 posix-group-func.o: posix-group-func.c posix-group-func.h posix-wsp-ident.h
 	$(CC) $(CFLAGS) posix-group-func.c
+
+posix-group-task.o: posix-group-task.c posix-group-func.h
+	$(CC) $(CFLAGS) posix-group-task.c
 
 posix-winsync-config.o: posix-winsync-config.c posix-wsp-ident.h
 	$(CC) $(CFLAGS) posix-winsync-config.c

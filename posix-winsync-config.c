@@ -45,6 +45,7 @@
 #endif
 #include "posix-wsp-ident.h"
 #include <string.h>
+#include "posix-group-func.h"
 
 #define POSIX_WINSYNC_CONFIG_FILTER "(objectclass=*)"
 /*
@@ -122,6 +123,7 @@ posix_winsync_agmt_init(const Slapi_DN *ds_subtree, const Slapi_DN *ad_subtree)
 	    slapi_log_error ( SLAPI_LOG_FATAL, POSIX_WINSYNC_PLUGIN_NAME,
 		    "suffix not found for '%s'\n",slapi_dn_parent(slapi_sdn_get_dn(ds_subtree)));
 	}
+	
     slapi_log_error(SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,
                     "<-- posix_winsync_agmt_init -- end\n");
 
@@ -210,14 +212,31 @@ int posix_winsync_config(Slapi_Entry *config_e)
     
     posix_winsync_apply_config(NULL, NULL, config_e,&returncode, returntext, NULL);
     /* config DSE must be initialized before we get here */
-    if (returncode == LDAP_SUCCESS) {
+    {
+        int rc = 0;
         const char *config_dn = slapi_entry_get_dn_const(config_e);
-       slapi_config_register_callback(SLAPI_OPERATION_MODIFY, DSE_FLAG_POSTOP, config_dn, LDAP_SCOPE_BASE,
+        
+        
+        if(!memberUidLockInit())
+        {
+            slapi_log_error(SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,
+                        "posix_winsync_config -- init Monitor failed\n");
+        }
+        
+        slapi_config_register_callback(SLAPI_OPERATION_MODIFY, DSE_FLAG_POSTOP, config_dn, LDAP_SCOPE_BASE,
                                        POSIX_WINSYNC_CONFIG_FILTER, posix_winsync_apply_config,NULL);
+        
+        rc = slapi_task_register_handler("memberuid task", posix_group_task_add);
+        if(rc)
+        {
+            slapi_log_error(SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,
+                        "posix_winsync_config -- register memberuid task failed\n");
+        }
     }
 
-    inited = 1;
 
+    inited = 1;
+    
     if (returncode != LDAP_SUCCESS) {
         slapi_log_error(SLAPI_LOG_FATAL, POSIX_WINSYNC_PLUGIN_NAME,
                         "Error %d: %s\n", returncode, returntext);

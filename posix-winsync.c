@@ -917,7 +917,9 @@ posix_winsync_pre_ds_mod_group_cb(void *cbdata, const Slapi_Entry *rawentry,
     slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
                     "_pre_ds_mod_group_cb present %d modify %d before\n",is_present_local,do_modify_local);
 	if(posix_winsync_config_get_mapMemberUid())
+	    memberUidLock();
         modGroupMembership(ds_entry,smods,do_modify);
+        memberUidUnlock();
 	
     slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
                     "_pre_ds_mod_group_cb present %d modify %d\n",is_present_local,do_modify_local);
@@ -1077,7 +1079,9 @@ posix_winsync_pre_ds_add_group_cb(void *cbdata, const Slapi_Entry *rawentry,
                     "<-- _pre_ds_add_group_cb -- adding objectclass for new entry failed %d\n",rc);
         }else{
             if(posix_winsync_config_get_mapMemberUid())
+                memberUidLock();
                 addGroupMembership(ds_entry,ad_entry);
+                memberUidUnlock();
         }
     }
     slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,

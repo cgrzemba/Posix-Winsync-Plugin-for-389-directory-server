@@ -13,5 +13,9 @@ int dn_in_set(const char* uid, char **uids);
 */
 int modGroupMembership(Slapi_Entry *entry, Slapi_Mods *smods, int *do_modify);
 int addGroupMembership(Slapi_Entry *entry, Slapi_Entry *ad_entry);
+char * searchUid(const char *udn);
+void memberUidLock();
+void memberUidUnlock();
+int memberUidLockInit();
 
 #endif
