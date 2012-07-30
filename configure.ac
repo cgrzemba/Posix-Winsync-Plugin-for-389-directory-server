@@ -7,6 +7,8 @@ AC_CONFIG_SRCDIR([.])
 AC_CANONICAL_HOST
 AC_PROG_CC
 
+AC_PROG_LIBTOOL
+
 # Checks for header files.
 AC_CHECK_HEADERS([string.h strings.h])
 
@@ -15,7 +17,7 @@ AC_HEADER_STDBOOL
 AC_TYPE_SIZE_T
 
 # Checks for library functions.
-AC_CHECK_FUNCS([strncasecmp strtol])
+AC_CHECK_FUNCS([strncasecmp strtol strncat])
 
 # Determine PIC flag, adjust default CFLAGS
 pic_flag=
