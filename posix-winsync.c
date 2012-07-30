@@ -64,6 +64,7 @@ for details see: Red_Hat_Directory_Server-8.2-Plug-in_Guide-en-US.pdf
 #endif
 #include <plstr.h>
 #include <strings.h>
+#include <stdlib.h>
 #include "posix-wsp-ident.h"
 #include "posix-group-func.h"
 
@@ -344,7 +345,7 @@ sync_acct_disable(
         } else {
             if (isvirt) {
                 strcpy(val,"cn=nsManagedDisabledRole,");
-                strlcat(val,slapi_sdn_get_dn(posix_winsync_config_get_suffix()),255);
+                strncat(val,slapi_sdn_get_dn(posix_winsync_config_get_suffix()),sizeof(val)-1);
                 attrval = val;
             }else{
                 attrval = "true";
@@ -393,7 +394,6 @@ attr_compare_equal(Slapi_Attr *a, Slapi_Attr *b)
 {
 	int i = 0;
 	Slapi_Value *va = NULL;
-	Slapi_Value *vb = NULL;
 
 	/* Iterate through values in attr a and search for each in attr b */
 	for (i = slapi_attr_first_value(a, &va); va && (i != -1);
@@ -1140,7 +1140,7 @@ posix_winsync_pre_ad_mod_user_mods_cb(void *cbdata, const Slapi_Entry *rawentry,
                     "--> _pre_ad_mod_user_mods_cb -- begin DS account [%s] \n", slapi_entry_get_dn_const(ds_entry));
 
     /* wrap the modstosend in a Slapi_Mods for convenience */
-    slapi_mods_init_byref(new_smods, *modstosend);
+    slapi_mods_init_passin(new_smods, *modstosend);
     slapi_mods_init_byref(smods, (LDAPMod**) origmods);
 
     for (mod = slapi_mods_get_first_mod(smods); mod;

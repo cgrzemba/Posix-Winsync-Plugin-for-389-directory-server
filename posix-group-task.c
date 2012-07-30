@@ -140,6 +140,7 @@ static int posix_group_del_memberuid_callback(Slapi_Entry *e, void *callback_dat
 	LDAPMod *mods[2];
 	char *val[2];
 	Slapi_PBlock *mod_pb = 0;
+	cb_data *the_cb_data = (cb_data *)callback_data;
 
 	mod_pb = slapi_pblock_new();
 
@@ -158,7 +159,7 @@ static int posix_group_del_memberuid_callback(Slapi_Entry *e, void *callback_dat
 		mods, 0, 0,
 		posix_winsync_get_plugin_identity(), 0);
 
-	slapi_pblock_set(mod_pb, SLAPI_TXN, ((cb_data *)callback_data)->txn);
+	slapi_pblock_set(mod_pb, SLAPI_TXN, the_cb_data->txn);
 	slapi_modify_internal_pb(mod_pb);
 
 	slapi_pblock_get(mod_pb,
@@ -243,6 +244,7 @@ static int posix_group_fix_memberuid_callback(Slapi_Entry *e, void *callback_dat
             Slapi_Mod *smod;
             LDAPMod **mods = (LDAPMod **) slapi_ch_malloc(2 * sizeof(LDAPMod *));
             int hint = 0;
+            cb_data *the_cb_data = (cb_data *)callback_data;
     
             smod = slapi_mod_new();
             slapi_mod_init(smod, 0);
@@ -265,7 +267,7 @@ static int posix_group_fix_memberuid_callback(Slapi_Entry *e, void *callback_dat
                 mod_pb, sdn, mods, 0, 0,
                 posix_winsync_get_plugin_identity(), 0);
     
-            slapi_pblock_set(mod_pb, SLAPI_TXN, ((cb_data*)callback_data)->txn);
+            slapi_pblock_set(mod_pb, SLAPI_TXN, the_cb_data->txn);
             slapi_modify_internal_pb(mod_pb);
     
             slapi_pblock_get(mod_pb, SLAPI_PLUGIN_INTOP_RESULT, &rc);
@@ -276,7 +278,7 @@ static int posix_group_fix_memberuid_callback(Slapi_Entry *e, void *callback_dat
         } else { 
             /* No member were found, so remove the memberuid attribute
              * from this entry. */
-            posix_group_del_memberuid_callback(e, &callback_data);
+            posix_group_del_memberuid_callback(e, callback_data);
         }
         slapi_valueset_free(uids);
 	}

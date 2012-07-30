@@ -110,7 +110,6 @@ posix_winsync_agmt_init(const Slapi_DN *ds_subtree, const Slapi_DN *ad_subtree)
     sdn = slapi_get_first_suffix( &node, 0 );
 	while (sdn)
 	{
-	    int rc=0;
 	    if(dn_isparent(sdn, ds_subtree) == 0){
             theConfig.rep_suffix = sdn;
             slapi_log_error ( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,
@@ -304,7 +303,6 @@ static int posix_winsync_apply_config (Slapi_PBlock *pb, Slapi_Entry* entryBefor
         "<-- _apply_config: config evaluated\n");
     *returncode = LDAP_SUCCESS;
 
-done3:
     slapi_unlock_mutex(theConfig.lock);
 
     if (*returncode != LDAP_SUCCESS) {

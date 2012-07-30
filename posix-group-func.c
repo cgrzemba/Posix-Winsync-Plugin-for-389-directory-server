@@ -45,8 +45,6 @@ int memberUidLockInit()
 
 /* search the user with DN udn and returns uid*/
 char * searchUid(const char *udn) {
-    int         rc = 0;
-
     Slapi_PBlock *int_search_pb = slapi_pblock_new ();
     Slapi_Entry **entries = NULL;
     char *attrs[]={"uid",NULL};
@@ -155,14 +153,10 @@ int modGroupMembership(Slapi_Entry *entry, Slapi_Mods *smods, int *do_modify){
             i != -1;
             i = slapi_attr_next_value(obj_attr, i, &value)
         ) {
-            Slapi_Attr  * um_attr = NULL;           /* Entry attributes uniquemember        */
-            Slapi_Attr  * muid_attr = NULL;           /* Entry attributes memebrof       */
-            Slapi_Value * uid_value =NULL;               /* uniquemember Attribute values        */
             const char * oc = NULL;
             
             oc = slapi_value_get_string(value);
             if (strncasecmp(oc,"posixGroup",11)==0){ /* entry has objectclass posixGroup */
-                Slapi_ValueSet *newvs = NULL;
                 Slapi_Mod *smod=slapi_mod_new();
                 Slapi_Mod *nextMod=slapi_mod_new();
                 int del_mod = 0;
@@ -197,9 +191,7 @@ int modGroupMembership(Slapi_Entry *entry, Slapi_Mods *smods, int *do_modify){
                     slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"modGroupMembership: no uniquemember mod, nothing to do<==\n");
                     return 0;
                 }
-                
-                int i;
-                
+                                
                 slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"modGroupMembership: entry is posixGroup\n");
         
                 Slapi_Attr  * muid_attr = NULL;           /* Entry attributes        */
