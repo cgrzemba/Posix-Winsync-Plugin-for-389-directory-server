@@ -448,9 +448,11 @@ static int addNisDomainName(Slapi_Mod *smod,const Slapi_Entry *ds_entry)
                 }
             }
         }
-	    slapi_sdn_copy(childparent,subtree_sdn);
-        slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
-	        "addNisDomainName iterate DN:%s\n", slapi_sdn_get_dn(subtree_sdn));
+		slapi_sdn_copy(childparent,subtree_sdn);
+		slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
+						"addNisDomainName iterate DN:%s\n", slapi_sdn_get_dn(subtree_sdn));
+		slapi_entry_free(entry);
+		entry = NULL;
 	}while (PR_TRUE );
 	slapi_pblock_destroy(pb);
 	if ( rc != 0 ){
@@ -469,8 +471,8 @@ static int addNisDomainName(Slapi_Mod *smod,const Slapi_Entry *ds_entry)
 
     }
     slapi_sdn_free(&childparent);
-    if (entry)
-         slapi_entry_free(entry);
+    slapi_entry_free(entry);
+    entry = NULL;
     slapi_sdn_free( &subtree_sdn); 
 	
 	slapi_ch_free_string(&nisdomainname);
@@ -623,11 +625,12 @@ posix_winsync_pre_ad_mod_user_cb(void *cbdata, const Slapi_Entry *rawentry,
                         Slapi_Mod *mysmod = slapi_mod_new();
                         addNisDomainName(mysmod, ds_entry);
                         slapi_mods_add_ldapmod(smods, slapi_mod_get_ldapmod_passout(mysmod));
-                        slapi_mod_done(mysmod);
+                        slapi_mod_free(&mysmod);
                     }
                     *do_modify = 1;
                 }
                 slapi_ch_free((void**)&ad_type);
+                slapi_valueset_free(vs);
 
                 slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
                    "_pre_ad_mod_group_b -- add modify %s DS account [%s]\n",
@@ -708,7 +711,7 @@ posix_winsync_pre_ad_mod_group_cb(void *cbdata, const Slapi_Entry *rawentry,
                         Slapi_Mod *mysmod = slapi_mod_new();
                         addNisDomainName(mysmod, ds_entry);
                         slapi_mods_add_ldapmod(smods, slapi_mod_get_ldapmod_passout(mysmod));
-                        slapi_mod_done(mysmod);
+                        slapi_mod_free(&mysmod);
                     }
                     *do_modify = 1;
                 }
@@ -760,7 +763,6 @@ posix_winsync_pre_ds_mod_user_cb(void *cbdata, const Slapi_Entry *rawentry,
 			rc = slapi_entry_next_attr(ad_entry, attr, &attr)) 
 	{
 		char *type = NULL;
-		Slapi_ValueSet *vs = NULL;
 		size_t i = 0;
 		
 		slapi_attr_get_type( attr, &type );
@@ -768,6 +770,7 @@ posix_winsync_pre_ds_mod_user_cb(void *cbdata, const Slapi_Entry *rawentry,
             if (0 == slapi_attr_type_cmp(type,attr_map[i].windows_attribute_name, SLAPI_TYPE_CMP_SUBTYPE)){
                 Slapi_Attr *local_attr = NULL;
                 char *local_type = NULL;
+                Slapi_ValueSet *vs = NULL;
                
                 slapi_attr_get_valueset(attr,&vs);
                 local_type = slapi_ch_strdup(attr_map[i].ldap_attribute_name);
@@ -790,6 +793,7 @@ posix_winsync_pre_ds_mod_user_cb(void *cbdata, const Slapi_Entry *rawentry,
                             local_type,valueset_get_valuearray(vs));
                     *do_modify = do_modify_local = 1;
                 }
+                slapi_valueset_free(vs);
                 slapi_ch_free((void**)&local_type);
                 /* what about if delete all values on windows ????? */
             }
@@ -1166,7 +1170,7 @@ posix_winsync_pre_ad_mod_user_mods_cb(void *cbdata, const Slapi_Entry *rawentry,
                         "_pre_ad_mod_user_mods_cb -- add NisDomain\n");
                     addNisDomainName(ocsmod, ds_entry);
                     slapi_mods_add_ldapmod(new_smods, slapi_mod_get_ldapmod_passout(ocsmod));
-                    slapi_mod_done(ocsmod);
+                    slapi_mod_free(&ocsmod);
                 }
             }
             i++;
@@ -1184,8 +1188,8 @@ posix_winsync_pre_ad_mod_user_mods_cb(void *cbdata, const Slapi_Entry *rawentry,
     }
     *modstosend = slapi_mods_get_ldapmods_passout(new_smods);
 
-    slapi_mods_done(smods);
-    slapi_mods_done(new_smods);
+    slapi_mods_free(&smods);
+    slapi_mods_free(&new_smods);
     slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
                     "<-- _pre_ad_mod_user_mods_cb -- end\n");
 
@@ -1210,7 +1214,7 @@ posix_winsync_pre_ad_mod_group_mods_cb(void *cbdata, const Slapi_Entry *rawentry
     slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
                     "--> _pre_ad_mod_group_mods_cb -- begin\n");
     /* wrap the modstosend in a Slapi_Mods for convenience */
-    slapi_mods_init_byref(new_smods, *modstosend);
+    slapi_mods_init_passin(new_smods, *modstosend);
     slapi_mods_init_byref(smods, (LDAPMod**)origmods);
 
     for (mod = slapi_mods_get_first_mod(smods); mod;
@@ -1235,7 +1239,7 @@ posix_winsync_pre_ad_mod_group_mods_cb(void *cbdata, const Slapi_Entry *rawentry
                             "_pre_ad_mod_group_mods_cb -- add NisDomain\n");
                         addNisDomainName(ocsmod, ds_entry);
                         slapi_mods_add_ldapmod(new_smods, slapi_mod_get_ldapmod_passout(ocsmod));
-                        slapi_mod_done(ocsmod);
+                        slapi_mod_free(&ocsmod);
                     }
                 }  
                 slapi_mods_add_ldapmod(new_smods, slapi_mod_get_ldapmod_passout(mysmod));
@@ -1255,8 +1259,8 @@ posix_winsync_pre_ad_mod_group_mods_cb(void *cbdata, const Slapi_Entry *rawentry
                 slapi_mod_dump(mod,0);
         }
     }
-    slapi_mods_done(smods);
-    slapi_mods_done(new_smods);
+    slapi_mods_free(&smods);
+    slapi_mods_free(&new_smods);
 
     slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
                     "<-- _pre_ad_mod_group_mods_cb -- end\n");
