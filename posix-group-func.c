@@ -136,6 +136,40 @@ int uid_in_set(const char* uid, char **uids) {
     return false;
 }
 
+/* return 1 if smods already has the given mod - 0 otherwise */
+static int
+smods_has_mod(Slapi_Mods *smods, int modtype, const char *type, const char *val)
+{
+    int rc = 0;
+    Slapi_Mod *smod = slapi_mod_new(), *smodp = NULL;
+
+    for (smodp = slapi_mods_get_first_smod(smods, smod);
+         (rc == 0) && smods && (smodp != NULL);
+         smodp = slapi_mods_get_next_smod(smods, smod)) {
+        if (slapi_attr_types_equivalent(slapi_mod_get_type(smod), type) &&
+            ((slapi_mod_get_operation(smod)|LDAP_MOD_BVALUES) == (modtype|LDAP_MOD_BVALUES))) {
+            /* type and op are equal - see if val is in the mod's list of values */
+            Slapi_Value *sval = slapi_value_new_string((char *)val);
+            Slapi_Attr *attr = slapi_attr_new();
+            struct berval *bvp = NULL;
+
+            slapi_attr_init(attr, type);
+            for (bvp = slapi_mod_get_first_value(smodp);
+                 (rc == 0) && (bvp != NULL);
+                 bvp = slapi_mod_get_next_value(smodp)) {
+                Slapi_Value *modval = slapi_value_new_berval(bvp);
+
+                rc = (slapi_value_compare(attr, sval, modval) == 0);
+                slapi_value_free(&modval);
+            }
+            slapi_value_free(&sval);
+            slapi_attr_free(&attr);
+        }
+    }
+    slapi_mod_free(&smod);
+    return rc;
+}
+
 int modGroupMembership(Slapi_Entry *entry, Slapi_Mods *smods, int *do_modify){
     int rc=0;
     Slapi_Attr  * obj_attr = NULL;           /* Entry attributes        */
@@ -288,16 +322,22 @@ int modGroupMembership(Slapi_Entry *entry, Slapi_Mods *smods, int *do_modify){
                     if (adduids){
                         int i;
                         for (i=0; adduids[i]; i++) {
-                            slapi_mods_add_string(smods,LDAP_MOD_ADD,"memberUid",adduids[i]);
+                            if (!smods_has_mod(smods,LDAP_MOD_ADD,"memberUid",adduids[i])) {
+                                slapi_mods_add_string(smods,LDAP_MOD_ADD,"memberUid",adduids[i]);
+                            }
                         }
                     }else{
                         int i;
                         for (i=0; moduids && moduids[i]; i++) {
-                            slapi_mods_add_string(smods,LDAP_MOD_ADD,"memberUid",moduids[i]);
+                            if (!smods_has_mod(smods,LDAP_MOD_ADD,"memberUid",moduids[i])) {
+                                slapi_mods_add_string(smods,LDAP_MOD_ADD,"memberUid",moduids[i]);
+                            }
                         }
                         slapi_ch_array_free(moduids);moduids=NULL;
                         for (i=0; deluids && deluids[i]; i++) {
-                            slapi_mods_add_string(smods,LDAP_MOD_DELETE,"memberUid",deluids[i]);
+                            if (!smods_has_mod(smods,LDAP_MOD_DELETE,"memberUid",deluids[i])) {
+                                slapi_mods_add_string(smods,LDAP_MOD_DELETE,"memberUid",deluids[i]);
+                            }
                         }
                     }
                     if (slapi_is_loglevel_set(SLAPI_LOG_PLUGIN)) 
