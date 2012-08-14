@@ -94,6 +94,7 @@ static windows_attribute_map user_attribute_map[] =
 	{ "loginShell","loginShell"},
 	{ "uidNumber","uidNumber" },
 	{ "gidNumber","gidNumber" },
+	{ "gecos","gecos" },
 	{ NULL, NULL }
 };
 
@@ -103,6 +104,7 @@ static windows_attribute_map user_mssfu_attribute_map[] =
 	{ "msSFU30loginshell","loginShell"},
 	{ "msSFU30uidnumber","uidNumber" },
 	{ "msSFU30gidnumber","gidNumber" },
+	{ "msSFU30gecos","gecos" },
 	{ NULL, NULL }
 };
 		
@@ -576,13 +578,11 @@ posix_winsync_pre_ad_mod_user_cb(void *cbdata, const Slapi_Entry *rawentry,
     int rc = 0;
     Slapi_Attr *attr = NULL;
     windows_attribute_map *attr_map=user_attribute_map;
-    windows_attribute_map *group_attr_map=group_attribute_map;
 
     slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
                     "--> posix_winsync_pre_ad_mod_user_cb -- begin DS account [%s]\n",slapi_entry_get_dn_const(ds_entry));
     if(posix_winsync_config_get_msSFUSchema()){
         attr_map=user_mssfu_attribute_map;
-        group_attr_map=group_mssfu_attribute_map;
     }
     
     /* called if init Replica: add nisDomain, uidnumber, ... if avail */
@@ -634,7 +634,7 @@ posix_winsync_pre_ad_mod_user_cb(void *cbdata, const Slapi_Entry *rawentry,
 
                 slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
                    "_pre_ad_mod_group_b -- add modify %s DS account [%s]\n",
-                            group_attr_map[i].windows_attribute_name,
+                            attr_map[i].windows_attribute_name,
                             slapi_entry_get_dn_const(ds_entry));
 
             }
@@ -716,7 +716,8 @@ posix_winsync_pre_ad_mod_group_cb(void *cbdata, const Slapi_Entry *rawentry,
                     *do_modify = 1;
                 }
                 slapi_ch_free((void**)&ad_type);
-
+                slapi_valuset_free(vs);
+                
                 slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
                    "_pre_ad_mod_group_b -- add modify %s DS account [%s]\n",
                             attr_map[i].windows_attribute_name,
@@ -913,6 +914,7 @@ posix_winsync_pre_ds_mod_group_cb(void *cbdata, const Slapi_Entry *rawentry,
                 slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,"4.\n");
 
                 slapi_ch_free((void**)&local_type);
+                slapi_valuset_free(vs);
                 /* what about if delete all values on windows ???? */
             }
             i++;
@@ -920,10 +922,11 @@ posix_winsync_pre_ds_mod_group_cb(void *cbdata, const Slapi_Entry *rawentry,
 	}
     slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
                     "_pre_ds_mod_group_cb present %d modify %d before\n",is_present_local,do_modify_local);
-	if(posix_winsync_config_get_mapMemberUid())
+	if(posix_winsync_config_get_mapMemberUid()){
 	    memberUidLock();
         modGroupMembership(ds_entry,smods,do_modify);
         memberUidUnlock();
+    }
 	
     slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
                     "_pre_ds_mod_group_cb present %d modify %d\n",is_present_local,do_modify_local);
@@ -1082,10 +1085,11 @@ posix_winsync_pre_ds_add_group_cb(void *cbdata, const Slapi_Entry *rawentry,
             slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
                     "<-- _pre_ds_add_group_cb -- adding objectclass for new entry failed %d\n",rc);
         }else{
-            if(posix_winsync_config_get_mapMemberUid())
+            if(posix_winsync_config_get_mapMemberUid()){
                 memberUidLock();
                 addGroupMembership(ds_entry,ad_entry);
                 memberUidUnlock();
+            }
         }
     }
     slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,

@@ -191,7 +191,7 @@ int modGroupMembership(Slapi_Entry *entry, Slapi_Mods *smods, int *do_modify){
             
             oc = slapi_value_get_string(value);
             if (strncasecmp(oc,"posixGroup",11)==0){ /* entry has objectclass posixGroup */
-                Slapi_Mod *smod=slapi_mod_new();
+                Slapi_Mod *smod=NULL;
                 Slapi_Mod *nextMod=slapi_mod_new();
                 int del_mod = 0;
                 char **smod_adduids=NULL;
@@ -220,7 +220,7 @@ int modGroupMembership(Slapi_Entry *entry, Slapi_Mods *smods, int *do_modify){
                         }
                     }
                 }
-                slapi_mod_done(nextMod);
+                slapi_mod_free(&nextMod);
                 if (!del_mod){
                     slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"modGroupMembership: no uniquemember mod, nothing to do<==\n");
                     return 0;
@@ -411,7 +411,7 @@ int addGroupMembership(Slapi_Entry *entry, Slapi_Entry *ad_entry){
                 ) {
                     const char *uid_dn=NULL;
                     static char *uid=NULL;
-                    const Slapi_Value *v=NULL;
+                    Slapi_Value *v=NULL;
                     
                     uid_dn=slapi_value_get_string(uid_value);
                     slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"addGroupMembership: perform member %s\n", uid_dn);
@@ -420,12 +420,14 @@ int addGroupMembership(Slapi_Entry *entry, Slapi_Entry *ad_entry){
                         slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"addGroupMembership: uid not found for %s, cannot do anything\n", uid_dn);  /* member on longer on server, do nothing */
                     } else {
                         v=slapi_value_new_string(uid);
+                        slapi_ch_free_string(&uid);
                         if (slapi_attr_value_find(muid_attr , slapi_value_get_berval(v)) == 0) {
-                            slapi_ch_free_string(&uid);
+                            slapi_value_free(&v);
                             continue;
                         }
                         slapi_valueset_add_value(newvs,v);
                         slapi_ch_free_string(&uid);
+                        slapi_value_free(&v);
                     }
                 }
                 slapi_entry_add_valueset(entry,"memberUid", newvs);

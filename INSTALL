@@ -365,12 +365,6 @@ operates.
      Run the configure checks, but stop before creating any output
      files.
 
-`--with-ds-inc=DIR'
-     The directory where SLAPI API headers are located (e.g. slapi-plugin.h)
-
-`--with-nspr-inc=DIR'
-     The directory where Netscape Portable Runtime headers are located (e.g prtypes.h)
-
 `configure' also accepts some other, not widely useful, options.  Run
 `configure --help' for more details.
 
