@@ -79,7 +79,7 @@ void *posix_winsync_agmt_init(const Slapi_DN *ds_subtree, const Slapi_DN *ad_sub
 static Slapi_PluginDesc posix_winsync_pdesc = {
     "posix-winsync-plugin",
     "contac Datentechnik GmbH",
-    "POSIX/1.0",
+    "POSIX/2.0",
     "Sync Posix Attributs for users and groups between AD and DS if available"
 };
 typedef struct _windows_attr_map 
@@ -716,7 +716,7 @@ posix_winsync_pre_ad_mod_group_cb(void *cbdata, const Slapi_Entry *rawentry,
                     *do_modify = 1;
                 }
                 slapi_ch_free((void**)&ad_type);
-                slapi_valuset_free(vs);
+                slapi_valueset_free(vs);
                 
                 slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
                    "_pre_ad_mod_group_b -- add modify %s DS account [%s]\n",
@@ -914,7 +914,7 @@ posix_winsync_pre_ds_mod_group_cb(void *cbdata, const Slapi_Entry *rawentry,
                 slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,"4.\n");
 
                 slapi_ch_free((void**)&local_type);
-                slapi_valuset_free(vs);
+                slapi_valueset_free(vs);
                 /* what about if delete all values on windows ???? */
             }
             i++;
@@ -1364,6 +1364,137 @@ posix_winsync_destroy_agmt_cb(void *cbdata, const Slapi_DN *ds_subtree,
     return;
 }
 
+static void
+posix_winsync_pre_ad_add_user_cb(void *cookie, Slapi_Entry *ds_entry, Slapi_Entry *ad_entry)
+{
+    Slapi_Attr  * obj_attr = NULL;           /* Entry attributes        */
+    windows_attribute_map *attr_map=user_attribute_map;
+    int rc = 0;
+
+    if(posix_winsync_config_get_msSFUSchema())
+        attr_map=user_mssfu_attribute_map;
+    
+/* if ds_entry has oc posixAccount add uidnumber, gidnumber, homeDirectory, loginShell, gecos */ 
+/* syncing/mapping of nsaccountlock -> userAccountControl will already done by the normal Win Sync-Service */
+    slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
+                    "--> _pre_ad_add_user_cb -- begin DS account [%s] \n", slapi_entry_get_dn_const(ds_entry));
+
+    rc = slapi_entry_attr_find(ds_entry, "objectclass", &obj_attr);
+    if (rc == 0) {                 /* Found objectclasses, so...  */
+        int i;
+        Slapi_Value * value = NULL;               /* Attribute values        */
+        
+        slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"_pre_ad_add_user_cb -- test objectclass posixAccount\n");
+        for (
+            i = slapi_attr_first_value(obj_attr, &value);
+            i != -1;
+            i = slapi_attr_next_value(obj_attr, i, &value)
+        ) {
+            const char * oc = NULL;
+            
+            oc = slapi_value_get_string(value);
+            if (strncasecmp(oc,"posixAccount",13)==0){ /* entry has objectclass posixAccount */
+                Slapi_Attr  *attr = NULL; 
+                 
+                for (rc = slapi_entry_first_attr(ds_entry, &attr); rc == 0;
+                        rc = slapi_entry_next_attr(ds_entry, attr, &attr)) 
+                {
+                    char *type = NULL;
+                    size_t i = 0;
+                    
+                    slapi_attr_get_type( attr, &type );
+                    slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
+                        "_pre_ad_add_user_cb -- check add attr: %s\n", type);
+                    while ( attr_map[i].windows_attribute_name != NULL) {
+                        if (0 == slapi_attr_type_cmp(type,attr_map[i].ldap_attribute_name, SLAPI_TYPE_CMP_SUBTYPE)){
+                            Slapi_Attr *ad_attr = NULL;
+                            Slapi_ValueSet *vs = NULL;
+                           
+                            slapi_attr_get_valueset(attr,&vs);
+                            slapi_entry_add_valueset(ad_entry, attr_map[i].windows_attribute_name, vs);
+                            slapi_valueset_free(vs); 
+                
+                            slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
+                                                "--> _pre_ad_add_user_cb -- "
+                                                "adding val for [%s] to new entry [%s]\n",
+                                                type, slapi_entry_get_dn_const(ad_entry));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
+                    "<-- _pre_ad_add_user_cb -- end\n");
+
+    return;
+}
+
+static void
+posix_winsync_pre_ad_add_group_cb(void *cookie, Slapi_Entry *ds_entry, Slapi_Entry *ad_entry)
+{
+    Slapi_Attr  * obj_attr = NULL;           /* Entry attributes        */
+    windows_attribute_map *attr_map=group_attribute_map;
+    int rc = 0;
+
+    if(posix_winsync_config_get_msSFUSchema())
+        attr_map=group_mssfu_attribute_map;
+    
+/* if ds_entry has oc posixGroup add gidnumber, ... */ 
+    slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
+                    "--> _pre_ad_add_group_cb -- begin DS account [%s] \n", slapi_entry_get_dn_const(ds_entry));
+
+    rc = slapi_entry_attr_find(ds_entry, "objectclass", &obj_attr);
+    if (rc == 0) {                 /* Found objectclasses, so...  */
+        int i;
+        Slapi_Value * value = NULL;               /* Attribute values        */
+        
+        slapi_log_error( SLAPI_LOG_PLUGIN, POSIX_WINSYNC_PLUGIN_NAME,"_pre_ad_add_group_cb -- test objectclass posixGroup\n");
+        for (
+            i = slapi_attr_first_value(obj_attr, &value);
+            i != -1;
+            i = slapi_attr_next_value(obj_attr, i, &value)
+        ) {
+            const char * oc = NULL;
+            
+            oc = slapi_value_get_string(value);
+            if (strncasecmp(oc,"posixGroup",11)==0){ /* entry has objectclass posixGroup */
+                Slapi_Attr  *attr = NULL; 
+                 
+                for (rc = slapi_entry_first_attr(ds_entry, &attr); rc == 0;
+                        rc = slapi_entry_next_attr(ds_entry, attr, &attr)) 
+                {
+                    char *type = NULL;
+                    size_t i = 0;
+                    
+                    slapi_attr_get_type( attr, &type );
+                    slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
+                        "_pre_ad_add_group_cb -- check add attr: %s\n", type);
+                    while ( attr_map[i].windows_attribute_name != NULL) {
+                        if (0 == slapi_attr_type_cmp(type,attr_map[i].ldap_attribute_name, SLAPI_TYPE_CMP_SUBTYPE)){
+                            Slapi_Attr *ad_attr = NULL;
+                            Slapi_ValueSet *vs = NULL;
+                           
+                            slapi_attr_get_valueset(attr,&vs);
+                            slapi_entry_add_valueset(ad_entry, attr_map[i].windows_attribute_name, vs);
+                            slapi_valueset_free(vs); 
+                
+                            slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
+                                                "--> _pre_ad_add_group_cb -- "
+                                                "adding val for [%s] to new entry [%s]\n",
+                                                type, slapi_entry_get_dn_const(ad_entry));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
+                    "<-- _pre_ad_add_group_cb -- end\n");
+
+    return;
+}
+
 static void *posix_winsync_api[] = {
     NULL, /* reserved for api broker use, must be zero */
     posix_winsync_agmt_init,
@@ -1384,7 +1515,19 @@ static void *posix_winsync_api[] = {
     posix_winsync_can_add_entry_to_ad_cb,
     posix_winsync_begin_update_cb,
     posix_winsync_end_update_cb,
-    posix_winsync_destroy_agmt_cb
+    posix_winsync_destroy_agmt_cb,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    posix_winsync_pre_ad_add_user_cb,
+    posix_winsync_pre_ad_add_group_cb,
+    NULL,
+    NULL,
+    NULL,
+    NULL
 };
 
 
@@ -1414,7 +1557,7 @@ posix_winsync_plugin_start(Slapi_PBlock *pb)
     slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
                     "--> posix_winsync_plugin_start -- begin\n");
 
-	if( slapi_apib_register(WINSYNC_v1_0_GUID, posix_winsync_api) ) {
+	if( slapi_apib_register(WINSYNC_v2_0_GUID, posix_winsync_api) ) {
         slapi_log_error( SLAPI_LOG_FATAL, posix_winsync_plugin_name,
                          "<-- posix_winsync_plugin_start -- failed to register winsync api -- end\n");
         return -1;
@@ -1442,7 +1585,7 @@ posix_winsync_plugin_close(Slapi_PBlock *pb)
     slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
                     "--> posix_winsync_plugin_close -- begin\n");
 
-	slapi_apib_unregister(WINSYNC_v1_0_GUID);
+	slapi_apib_unregister(WINSYNC_v2_0_GUID);
 
     slapi_log_error(SLAPI_LOG_PLUGIN, posix_winsync_plugin_name,
                     "<-- posix_winsync_plugin_close -- end\n");
