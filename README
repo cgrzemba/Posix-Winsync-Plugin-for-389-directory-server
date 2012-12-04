@@ -1,4 +1,6 @@
-WARNIG
+!! Since version 1.2.11 this is integrated in 389 Directory Server !!
+
+WARNING
 The source code has developer state. For production environment test it carefully.
 
 This is a winsync plugin for the 389 directory server. The directory server is a fedora project:
